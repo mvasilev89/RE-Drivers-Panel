@@ -6,7 +6,7 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#000000">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Машинисты">
 <title>Панель машинистов</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -1652,10 +1652,11 @@ body {
   let simSafe = [0, 0];   // симуляция выреза из меню, css px [left, right]
   let stretch = false;    // false — 2400×1080 (по умолчанию), true — растягивать под экран
   function fit() {
-    // Сверху/снизу не заходим под статус-бар и полоску «домой»: на iPad (iOS 26) система размывает там контент
+    // Сверху не заходим под статус-бар: на iPad (iOS 26) система размывает там контент.
+    // Низ (полоска «домой») не трогаем — на iPhone в альбомной ориентации сцена занимает всю высоту, как раньше.
     const cs0 = getComputedStyle(safeProbe);
-    const sT = parseFloat(cs0.paddingTop) || 0, sB = parseFloat(cs0.paddingBottom) || 0;
-    const vw = window.innerWidth, vh = window.innerHeight - sT - sB;
+    const sT = parseFloat(cs0.paddingTop) || 0;
+    const vw = window.innerWidth, vh = window.innerHeight - sT;
     // Поворот только на телефоне (тач-экран без мыши). На компьютере — всегда горизонтально.
     const isPhone = window.matchMedia("(pointer: coarse) and (hover: none)").matches;
     const portrait = isPhone && vh > vw;
@@ -1683,7 +1684,7 @@ body {
     $("#safeSimR").style.display = simSafe[1] ? "block" : "none";
     const rot = portrait ? " rotate(90deg)" : "";
     const tx = portrait ? (Hl * s) / 2 : -(Wl * s) / 2;
-    const ty = -(portrait ? Wl * s : Hl * s) / 2 + (sT - sB) / 2;
+    const ty = -(portrait ? Wl * s : Hl * s) / 2 + sT / 2;
     stage.style.transform = `translate(${tx}px, ${ty}px)${rot} scale(${s})`;
   }
   window.addEventListener("resize", fit);
