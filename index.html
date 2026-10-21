@@ -533,12 +533,13 @@ body {
 /* ---------- Hint (подсказка по «i») ---------- */
 .card-info { cursor: pointer; pointer-events: auto; }
 .card-info-hit { left: 350px; top: 28px; width: 70px; height: 70px; border: 0; padding: 0; background: none; cursor: pointer; }
+/* Подсказка показывается под «i» (справа ей не хватает места у края экрана) */
 #cardHint {
-  left: calc(1841px + var(--sl)); top: 102px; width: 507px;
+  left: calc(1470px + var(--sl)); top: 196px; width: 428px;
   filter: drop-shadow(0 12px 7px rgba(0,0,0,.32));
   pointer-events: none;
   visibility: hidden; opacity: 0;
-  transform: scale(.6); transform-origin: 32px 73px;
+  transform: scale(.6); transform-origin: 365px 0;
   transition: opacity 140ms ease-in, transform 140ms ease-in, visibility 0s linear 140ms;
   z-index: 5;
 }
@@ -546,9 +547,9 @@ body {
   visibility: visible; opacity: 1; transform: none;
   transition: opacity 180ms ease-out, transform 260ms var(--ease-out), visibility 0s;
 }
-#cardHint .tri { left: 31.5px; top: 55px; width: 16px; height: 36px; }
+#cardHint .tri { left: 347px; top: 0; width: 36px; height: 16px; }
 #cardHint .box {
-  position: relative; margin-left: 47.5px; width: 428px; box-sizing: border-box;
+  position: relative; margin-top: 16px; width: 428px; box-sizing: border-box;
   padding: 24px; border-radius: 12px; background: #f9e7cf;
   font-family: "Lato", "Helvetica Neue", Arial, sans-serif; font-weight: 500;
   font-size: 36px; line-height: 43px; color: #17120b; text-align: center;
@@ -994,7 +995,7 @@ body {
 #winCard { left: calc(48px + var(--sl)); top: 32px; transform: translateX(-30px); opacity: 0;
   transition: transform 380ms cubic-bezier(.2,.8,.3,1), opacity 260ms ease; }
 #stage[data-screen="order"] #winCard { transform: none; opacity: 1; }
-#winHead { left: 612px; top: 16px; width: 1248px; height: 128px; }
+#winHead { left: calc(612px + var(--sl)); top: 16px; width: 1248px; height: 128px; }
 #winHead > * { position: absolute; }
 #winHead .pill { width: 320px; height: 96px; }
 #winHead .txt { font-size: 48px; text-transform: uppercase; color: var(--c-white); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -1255,8 +1256,8 @@ body {
       </div>
     </div>
 
-    <div id="cardHint" class="abs" data-name="Hints | Right" role="tooltip">
-      <svg class="abs tri" viewBox="0 0 16 36" aria-hidden="true"><path d="M16 0V36L0 18Z" fill="#f9e7cf"/></svg>
+    <div id="cardHint" class="abs" data-name="Hints | Bottom" role="tooltip">
+      <svg class="abs tri" viewBox="0 0 36 16" aria-hidden="true"><path d="M0 16H36L18 0Z" fill="#f9e7cf"/></svg>
       <div class="box" id="cardHintText"></div>
     </div>
 
@@ -1652,15 +1653,25 @@ body {
   let simSafe = [0, 0];   // симуляция выреза из меню, css px [left, right]
   let stretch = false;    // false — 2400×1080 (по умолчанию), true — растягивать под экран
   function fit() {
-    // Сверху не заходим под статус-бар: на iPad (iOS 26) система размывает там контент.
-    // Низ (полоска «домой») не трогаем — на iPhone в альбомной ориентации сцена занимает всю высоту, как раньше.
-    const cs0 = getComputedStyle(safeProbe);
-    const sT = parseFloat(cs0.paddingTop) || 0;
-    const vw = window.innerWidth, vh = window.innerHeight - sT;
-    // Поворот только на телефоне (тач-экран без мыши). На компьютере — всегда горизонтально.
-    const isPhone = window.matchMedia("(pointer: coarse) and (hover: none)").matches;
-    const portrait = isPhone && vh > vw;
-    const sw = portrait ? vh : vw, sh = portrait ? vw : vh;
+    // Safe area устройства (вне iframe). На телефоне/планшете всегда показываем альбомную сцену:
+    // в портретной ориентации поворачиваем её на 90° (вырез сверху экрана → слева сцены).
+    const cs = getComputedStyle(safeProbe);
+    const iT = parseFloat(cs.paddingTop) || 0, iB = parseFloat(cs.paddingBottom) || 0;
+    let iL = parseFloat(cs.paddingLeft) || 0, iR = parseFloat(cs.paddingRight) || 0;
+    const W0 = window.innerWidth, H0 = window.innerHeight;
+    const isTouch = window.matchMedia("(pointer: coarse)").matches;
+    const portrait = isTouch && H0 > W0;
+    // iOS в альбомной отдаёт одинаковый отступ слева и справа, хотя вырез только с одной стороны.
+    // Сторону выреза берём из ориентации: 90° — вырез слева, 270° (−90°) — справа; с другой стороны — небольшой отступ под скругление.
+    const ang = (screen.orientation && typeof screen.orientation.angle === "number") ? screen.orientation.angle : (window.orientation || 0);
+    if (!portrait && iL > 0 && Math.abs(iL - iR) < 1) {
+      const small = Math.round(iL * 0.35);
+      if (ang === 90) iR = small;
+      else if (ang === 270 || ang === -90) iL = small;
+    }
+    // Сверху (альбомная) не заходим под статус-бар: на iPad (iOS 26) система размывает там контент. Низ не трогаем.
+    const topCut = portrait ? 0 : iT;
+    const sw = portrait ? H0 : W0, sh = portrait ? W0 : H0 - topCut;
     let s, Wl, Hl;
     if (stretch) {                    // «По экрану»: ширина сцены под соотношение сторон телефона
       s = sh / H;
@@ -1674,21 +1685,25 @@ body {
     stage.style.height = Hl + "px";
     stageH = Hl;
     if (typeof setPanelHeight === "function" && state) setPanelHeight(state.trains.length);
-    // safe area: реальные отступы устройства (вне iframe) или симуляция из меню
-    const cs = getComputedStyle(safeProbe);
-    const realL = parseFloat(cs.paddingLeft) || 0, realR = parseFloat(cs.paddingRight) || 0;
+    // отступы сцены: реальные (с учётом поворота) или симуляция из меню
+    const realL = portrait ? iT : iL, realR = portrait ? Math.round(iB * 0.6) : iR;
     const L = Math.max(realL, simSafe[0]), Rr = Math.max(realR, simSafe[1]);
-    stage.style.setProperty("--sl", (L / s) + "px");
-    stage.style.setProperty("--sr", (Rr / s) + "px");
+    // на сцене 2400 по ширине отступ виден только если сцена шире экрана по краям меньше выреза
+    const edge = Math.max(0, (sw - Wl * s) / 2);
+    stage.style.setProperty("--sl", (Math.max(0, L - edge) / s) + "px");
+    stage.style.setProperty("--sr", (Math.max(0, Rr - edge) / s) + "px");
     $("#safeSimL").style.display = simSafe[0] ? "block" : "none";
     $("#safeSimR").style.display = simSafe[1] ? "block" : "none";
     const rot = portrait ? " rotate(90deg)" : "";
     const tx = portrait ? (Hl * s) / 2 : -(Wl * s) / 2;
-    const ty = -(portrait ? Wl * s : Hl * s) / 2 + sT / 2;
+    const ty = -(portrait ? Wl * s : Hl * s) / 2 + topCut / 2;
     stage.style.transform = `translate(${tx}px, ${ty}px)${rot} scale(${s})`;
   }
   window.addEventListener("resize", fit);
   window.addEventListener("orientationchange", () => setTimeout(fit, 150));
+  if (screen.orientation) screen.orientation.addEventListener("change", () => setTimeout(fit, 150));
+  // Android/PWA: пробуем зафиксировать альбомную ориентацию при первом касании (iOS не поддерживает — там поворот сцены)
+  document.addEventListener("pointerdown", () => { try { screen.orientation.lock("landscape").catch(() => {}); } catch (e) {} }, { once: true });
   if (window.visualViewport) visualViewport.addEventListener("resize", fit);
   fit();
 
