@@ -85,7 +85,7 @@ body {
      --sl / --sr — безопасные отступы слева/справа (safe area) в тех же единицах */
   width: 2400px;
   height: 1080px;
-  --sl: 0px; --sr: 0px;
+  --sl: 0px; --sr: 0px; --sp: 0px;
   transform-origin: 0 0;
   overflow: hidden;
   color: var(--c-white);
@@ -203,7 +203,7 @@ body {
 
 /* ---------- Panel ---------- */
 #panel {
-  left: calc(130px + var(--sl)); top: 112px; width: 1288px; height: 648px;
+  left: calc(130px + var(--sp)); top: 112px; width: 1288px; height: 648px;
   border-radius: 10px;
   background: var(--c-panel);
   box-shadow: var(--panel-shadow);
@@ -446,7 +446,7 @@ body {
 
 /* ---------- Driver Cards (карточка предложения) ---------- */
 #driverCard {
-  left: calc(1450px + var(--sl)); top: 112px; width: 448px; height: 648px;
+  left: calc(1450px + var(--sp)); top: 112px; width: 448px; height: 648px;
   border-radius: 10px;
   visibility: hidden;
   opacity: 0;
@@ -532,14 +532,16 @@ body {
 
 /* ---------- Hint (подсказка по «i») ---------- */
 .card-info { cursor: pointer; pointer-events: auto; }
-.card-info-hit { left: 350px; top: 28px; width: 70px; height: 70px; border: 0; padding: 0; background: none; cursor: pointer; }
-/* Подсказка показывается под «i» (справа ей не хватает места у края экрана) */
+/* подсказка по тапу на всю картинку карточки (и на «i») */
+.card-info-hit { left: 22px; top: 22px; width: 404px; height: 360px; border: 0; padding: 0; background: none; cursor: pointer; }
+/* Подсказка справа от «i» (Hints | Right). Панель и карточка сдвигаются от выреза слева чуть меньше (--sp),
+   чтобы подсказка помещалась на экране и не перекрывала картинку */
 #cardHint {
-  left: calc(1470px + var(--sl)); top: 196px; width: 428px;
+  left: calc(1841px + var(--sp)); top: 102px; width: 507px;
   filter: drop-shadow(0 12px 7px rgba(0,0,0,.32));
   pointer-events: none;
   visibility: hidden; opacity: 0;
-  transform: scale(.6); transform-origin: 365px 0;
+  transform: scale(.6); transform-origin: 32px 73px;
   transition: opacity 140ms ease-in, transform 140ms ease-in, visibility 0s linear 140ms;
   z-index: 5;
 }
@@ -547,9 +549,9 @@ body {
   visibility: visible; opacity: 1; transform: none;
   transition: opacity 180ms ease-out, transform 260ms var(--ease-out), visibility 0s;
 }
-#cardHint .tri { left: 347px; top: 0; width: 36px; height: 16px; }
+#cardHint .tri { left: 31.5px; top: 55px; width: 16px; height: 36px; }
 #cardHint .box {
-  position: relative; margin-top: 16px; width: 428px; box-sizing: border-box;
+  position: relative; margin-left: 47.5px; width: 428px; box-sizing: border-box;
   padding: 24px; border-radius: 12px; background: #f9e7cf;
   font-family: "Lato", "Helvetica Neue", Arial, sans-serif; font-weight: 500;
   font-size: 36px; line-height: 43px; color: #17120b; text-align: center;
@@ -1291,8 +1293,8 @@ body.is-portrait #viewport { visibility: hidden; }
       </div>
     </div>
 
-    <div id="cardHint" class="abs" data-name="Hints | Bottom" role="tooltip">
-      <svg class="abs tri" viewBox="0 0 36 16" aria-hidden="true"><path d="M0 16H36L18 0Z" fill="#f9e7cf"/></svg>
+    <div id="cardHint" class="abs" data-name="Hints | Right" role="tooltip">
+      <svg class="abs tri" viewBox="0 0 16 36" aria-hidden="true"><path d="M16 0V36L0 18Z" fill="#f9e7cf"/></svg>
       <div class="box" id="cardHintText"></div>
     </div>
 
@@ -1732,6 +1734,8 @@ body.is-portrait #viewport { visibility: hidden; }
     // на сцене 2400 по ширине отступ виден только если сцена шире экрана по краям меньше выреза
     const edge = Math.max(0, (sw - Wl * s) / 2);
     stage.style.setProperty("--sl", (Math.max(0, L - edge) / s) + "px");
+    // панель машинистов и карточка: панель начинается в 130 от края — ей хватает отступа выреза минус 150
+    stage.style.setProperty("--sp", Math.max(0, Math.max(0, L - edge) / s - 150) + "px");
     stage.style.setProperty("--sr", (Math.max(0, Rr - edge) / s) + "px");
     $("#safeSimL").style.display = simSafe[0] ? "block" : "none";
     $("#safeSimR").style.display = simSafe[1] ? "block" : "none";
@@ -1915,9 +1919,13 @@ body.is-portrait #viewport { visibility: hidden; }
   // и после этого не прячется до закрытия панели.
   const cardEl = $("#driverCard");
   function syncCard(delay) {
+    // «Нанять» (за рекламу) — когда упёрлись в лимит, и держится до закрытия панели.
+    // После просмотра рекламы «В магазин» показываем всегда, пока в магазине есть машинисты (до лимита 10).
     const limit = state.trains.length >= state.driversMax;
     if (!state.open) { cardEl.classList.remove("is-shown"); return; }
-    if (limit && !cardEl.classList.contains("is-shown")) {
+    if (state.hired && state.driversMax >= DRIVERS_LIMIT) { cardEl.classList.remove("is-shown"); hideHint(); return; }
+    const want = state.hired || limit;
+    if (want && !cardEl.classList.contains("is-shown")) {
       cardEl.style.setProperty("--card-delay", delay + "ms");
       cardEl.classList.add("is-shown");
     }
