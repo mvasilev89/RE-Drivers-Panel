@@ -1746,6 +1746,16 @@ body.is-portrait #viewport { visibility: hidden; }
   // Android/PWA: пробуем зафиксировать альбомную ориентацию при первом касании (iOS не поддерживает — там поворот сцены)
   document.addEventListener("pointerdown", () => { try { screen.orientation.lock("landscape").catch(() => {}); } catch (e) {} }, { once: true });
   if (window.visualViewport) visualViewport.addEventListener("resize", fit);
+  // Android (иконка на экране «Домой»): при первом запуске окно ещё несколько сотен мс меняет размер
+  // (уходят системные панели), а resize приходит не всегда — тогда сцена оставалась с чёрными полосами.
+  // Перевписываем при любом изменении размера страницы, после загрузки и при возврате в приложение.
+  const refit = () => requestAnimationFrame(fit);
+  if (window.ResizeObserver) new ResizeObserver(refit).observe(document.documentElement);
+  window.addEventListener("load", refit);
+  window.addEventListener("pageshow", refit);
+  window.addEventListener("focus", refit);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { refit(); setTimeout(fit, 300); } });
+  [100, 300, 700, 1500, 3000].forEach(t => setTimeout(fit, t));
   fit();
 
   // ---------- Helpers ----------
