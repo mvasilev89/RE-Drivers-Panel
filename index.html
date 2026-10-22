@@ -1889,7 +1889,9 @@ body.is-portrait #viewport { visibility: hidden; }
       : (ready >= 1 && full) || busyAll ? "red"
       : "blue";
     driversBtn.dataset.glow = glow;
-    $("#driverCard").dataset.state = state.hired ? "shop" : "hire";
+    // упёрлись в лимит — рекламная карточка «Нанять», иначе — «В магазин»
+    const cardState = state.trains.length >= state.driversMax ? "hire" : "shop";
+    if ($("#driverCard").dataset.state !== cardState) { hideHint(); $("#driverCard").dataset.state = cardState; }
     syncCard(0);
     renderHud();
   }
@@ -1948,13 +1950,11 @@ body.is-portrait #viewport { visibility: hidden; }
   // и после этого не прячется до закрытия панели.
   const cardEl = $("#driverCard");
   function syncCard(delay) {
-    // «Нанять» (за рекламу) — когда упёрлись в лимит, и держится до закрытия панели.
-    // После просмотра рекламы «В магазин» показываем всегда, пока в магазине есть машинисты (до лимита 10).
-    const limit = state.trains.length >= state.driversMax;
+    // Карточка всегда рядом с открытой панелью: «В магазин», а при упоре в лимит — рекламная «Нанять».
+    // Не показываем, только когда машинистов уже максимум (в магазине купить больше нечего).
     if (!state.open) { cardEl.classList.remove("is-shown"); return; }
-    if (state.hired && state.driversMax >= DRIVERS_LIMIT) { cardEl.classList.remove("is-shown"); hideHint(); return; }
-    const want = state.hired || limit;
-    if (want && !cardEl.classList.contains("is-shown")) {
+    if (state.driversMax >= DRIVERS_LIMIT) { cardEl.classList.remove("is-shown"); hideHint(); return; }
+    if (!cardEl.classList.contains("is-shown")) {
       cardEl.style.setProperty("--card-delay", delay + "ms");
       cardEl.classList.add("is-shown");
     }
@@ -2330,7 +2330,6 @@ body.is-portrait #viewport { visibility: hidden; }
   $("#driverCard").addEventListener("click", (e) => e.stopPropagation());
   // «Нанять» (за рекламу): +1 машинист (3/3 → 3/4), карточка меняется на «Расширяйте штат»
   $("#hireBtn").addEventListener("click", () => {
-    if (state.hired) return;
     state.hired = true;
     state.driversMax = Math.min(DRIVERS_LIMIT, state.driversMax + 1);
     hideHint();
